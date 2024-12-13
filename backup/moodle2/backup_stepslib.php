@@ -2538,7 +2538,7 @@ class backup_questions_structure_step extends backup_structure_step {
 
         // Limit question that are included in backup: Custom development by Wunderbyte start.
         $sql = <<<SQL
-                SELECT qbe.*
+                SELECT DISTINCT qbe.*
                 FROM {question_bank_entries} qbe
                 JOIN {question_categories} qc ON qbe.questioncategoryid = qc.id
                 JOIN {question_versions} qv ON qbe.id = qv.questionbankentryid
@@ -2561,11 +2561,27 @@ class backup_questions_structure_step extends backup_structure_step {
                                     WHERE cm.course=:courseid and m.name = 'quiz'
                               )
                     )
+                    OR q.id IN (
+                        SELECT DISTINCT qa.questionid
+                            FROM {question_attempts} qa
+                            JOIN {question_usages} qu ON qa.questionusageid = qu.id
+                            JOIN {quiz_attempts} quiza ON qu.id = quiza.uniqueid
+                            JOIN {quiz} quiz ON quiza.quiz = quiz.id
+                            JOIN {course_modules} cm ON quiz.id = cm.instance
+                            JOIN {modules} m ON cm.module = m.id
+                            JOIN {question_versions} qv ON qv.questionid = qa.questionid
+                            JOIN {question_bank_entries} qbe ON qv.questionbankentryid = qbe.id
+                            JOIN {question_categories} inner_qc ON qbe.questioncategoryid = qc.id
+                            WHERE cm.course = :courseid2
+                                AND m.name = 'quiz'
+                                AND inner_qc.id = qc.id
+                    )
                 )
                SQL;
         $params = [
             'categoryid' => backup::VAR_PARENTID,
             'courseid' => backup::VAR_COURSEID,
+            'courseid2' => backup::VAR_COURSEID,
         ];
         $questionbankentry->set_source_sql($sql, $params);
        // Custom development Wunderbyte end.
